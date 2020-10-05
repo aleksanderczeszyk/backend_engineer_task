@@ -63,7 +63,7 @@ class RouteAddWayPoint(APIView):
 
     def get_object(self, pk):
         try:
-            return Route.objects.get(pk=pk)
+            Route.objects.get(pk=pk)
         except Route.DoesNotExist:
             raise Http404
 
@@ -121,11 +121,11 @@ class LongestRoutePerDay(APIView):
         return serializer.data
 
     def get(self, request, format=None):
-        response_payload = {}
+        response_payload = []
         routes_serialized_data = self.get_previous_days_routes(request)
-        dates = set([route["date"] for route in routes_serialized_data])
+        dates = list(set([route["date"] for route in routes_serialized_data]))
         for date in dates:
-            response_payload.update(
+            response_payload.append(
                 {"date": date, "route_ids": route_length.get_longest_route_for_given_day(request, date)}
             )
         return Response(response_payload, status=status.HTTP_200_OK)

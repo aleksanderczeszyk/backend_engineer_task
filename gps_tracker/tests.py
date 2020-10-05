@@ -1,6 +1,8 @@
 from django.test import TestCase
 import requests
 from datetime import datetime, timedelta
+from gps_tracker.models import GeoPoint
+from gps_tracker.models import Route
 
 
 SERVICE_ENDPOINT = 'http://127.0.0.1:8000/'
@@ -39,30 +41,54 @@ class TestRoute(TestCase):
         for coordinates in coords:
             requests.post(ROUTE_ADD_WAY_POINT_ENDPOINT.format(route_id), json=coordinates)
 
+    def _get_route(self, pk):
+        return Route.objects.get(pk=pk)
+
     def test_length_calculation(self):
         length = self.length_get.json()
         assert 11750 < length['km'] < 11900
 
     def test_returning_longest_route_per_date(self):
-        today = datetime.today().date()
-        today = today.strftime('%Y-%m-%d')
-        route_ids = []
+        yesterday = datetime.today().date() - timedelta(days=1)
+        yesterday = yesterday.strftime('%Y-%m-%d')
+        routes = []
         for i in range(3):
-            route_creation_response = requests.post(ROUTE_ENDPOINT)
-            route = route_creation_response.json()
-            route_id = route['route_id']
-            route_ids.append(route_id)
+            routes.append(Route(date=yesterday))
+            routes[i].save()
 
-        self._push_route(route_ids[0])
+        print(routes)
 
-        self._push_route(route_ids[1])
-        self._push_additional_coords_to_route(route_ids[1], self.additional_coords[0])
+        for coord in self.wgs84_coordinates:
+            for route in routes:
+                model = GeoPoint(date=yesterday, lon=coord["lon"], lat=coord["lat"], route=route)
+                model.save()
 
-        self._push_route(route_ids[2])
-        self._push_additional_coords_to_route(route_ids[2], self.additional_coords)
+        route_2_additional_point = GeoPoint(
+            date=yesterday,
+            lon=self.additional_coords[0]["lon"],
+            lat=self.additional_coords[0]["lat"],
+            route=routes[1])
+        route_2_additional_point.save()
+
+        route_3_additional_points = [
+            GeoPoint(
+                date=yesterday,
+                lon=self.additional_coords[0]["lon"],
+                lat=self.additional_coords[0]["lat"],
+                route=routes[2]
+            ),
+            GeoPoint(
+                date=yesterday,
+                lon=self.additional_coords[1]["lon"],
+                lat=self.additional_coords[1]["lat"],
+                route=routes[2]
+            )
+        ]
+        for point in route_3_additional_points:
+            point.save()
 
         longest_route_per_day_response = requests.get(LONGEST_ROUTE_PER_DAY_ENDPOINT).json()
 
-        assert route_ids[2] in longest_route_per_day_response[today]
+        assert routes[2].route_id in longest_route_per_day_response[yesterday]
         print(longest_route_per_day_response)
 
