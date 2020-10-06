@@ -1,5 +1,6 @@
 from django.test import TestCase
-import requests
+from django.test import Client
+import json
 from datetime import datetime, timedelta
 from gps_tracker.models import GeoPoint
 from gps_tracker.models import Route
@@ -11,6 +12,7 @@ ROUTE_ADD_WAY_POINT_ENDPOINT = "{}{}/way_point/".format(ROUTE_ENDPOINT, "{}")
 ROUTE_POINTS = "{}{}/points".format(ROUTE_ENDPOINT, "{}")
 ROUTE_LENGTH_ENDPOINT = '{}{}/length/'.format(ROUTE_ENDPOINT, "{}")
 LONGEST_ROUTE_PER_DAY_ENDPOINT = "{}route/longest_per_day".format(SERVICE_ENDPOINT)
+CLIENT = Client()
 
 
 class TestRoute(TestCase):
@@ -26,19 +28,20 @@ class TestRoute(TestCase):
     ]
 
     def setUp(self):
-        self.route_post = requests.post(ROUTE_ENDPOINT)
+        self.route_post = CLIENT.post(ROUTE_ENDPOINT)
         route = self.route_post.json()
         route_id = route['route_id']
         self._push_route(route_id)
-        self.length_get = requests.get(ROUTE_LENGTH_ENDPOINT.format(route_id))
+        self.length_get = CLIENT.get(
+            ROUTE_LENGTH_ENDPOINT.format(route_id), Header='application/json', follow=True
+        ).data
 
     def _push_route(self, route_id):
         for coordinates in self.wgs84_coordinates:
-            requests.post(ROUTE_ADD_WAY_POINT_ENDPOINT.format(route_id), json=coordinates)
+            CLIENT.post(ROUTE_ADD_WAY_POINT_ENDPOINT.format(route_id), coordinates, content_type='application/json')
 
     def test_length_calculation(self):
-        length = self.length_get.json()
-        assert 11750 < length['km'] < 11900
+        assert 11750 < self.length_get['km'] < 11900
 
 
 class TestLongestRoutePerDay(TestCase):
@@ -59,8 +62,8 @@ class TestLongestRoutePerDay(TestCase):
         for i in range(3):
             self.routes.append(self._create_route_with_chosen_date(date=yesterday))
 
-        for coord in self.wgs84_coordinates:
-            for route in self.routes:
+        for route in self.routes:
+            for coord in self.wgs84_coordinates:
                 self._create_point_with_chosen_date(lon=coord["lon"], lat=coord["lat"], route=route, date=yesterday)
 
         # create point for middle length route
@@ -95,14 +98,9 @@ class TestLongestRoutePerDay(TestCase):
         return GeoPoint.objects.get(pk=pk)
 
     def test_returning_longest_route_per_date(self):
-        longest_route_per_day_response = requests.get(LONGEST_ROUTE_PER_DAY_ENDPOINT).json()
-        print(longest_route_per_day_response)
-
-        for route in self.routes:
-            point_response = requests.get(ROUTE_POINTS.format(route.pk)).json()
-            response = requests.get(ROUTE_LENGTH_ENDPOINT.format(route.pk)).json()
-            print("Points of routes: " + str(point_response))
-            print("Lengths: " + str(response))
+        longest_route_per_day_response = CLIENT.get(
+            LONGEST_ROUTE_PER_DAY_ENDPOINT, Header='application/json', follow=True
+        ).data
 
         yesterday = datetime.today().date() - timedelta(days=1)
         yesterday = yesterday.strftime("%Y-%m-%d")
