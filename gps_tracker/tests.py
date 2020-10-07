@@ -105,10 +105,9 @@ class TestLongestRoutePerDay(TestCase):
         yesterday = datetime.today().date() - timedelta(days=1)
         yesterday = yesterday.strftime("%Y-%m-%d")
 
-        result = ''
-
         for longest_route_per_day_object in longest_route_per_day_response:
             if longest_route_per_day_object["date"] == yesterday:
-                result += yesterday
-
-        assert result
+                assert self.routes[2].pk in longest_route_per_day_object["route_ids"],\
+                    "Checking if longest route is in the previous day longest route set"
+            else:
+                assert False, "The date was not listed in endpoint response"
