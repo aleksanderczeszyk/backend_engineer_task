@@ -6,61 +6,24 @@ from django.http import Http404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from datetime import datetime, timedelta
+from datetime import datetime
+from rest_framework import generics
 
 
-class RouteList(APIView):
-    """
-    List all routes or create a new route
-    """
-    def get(self, request, format=None):
-        routes = Route.objects.all()
-        serializer = RouteSerializer(routes, many=True, context={'request': request})
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = RouteSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class RouteList(generics.ListCreateAPIView):
+    queryset = Route.objects.all()
+    serializer_class = RouteSerializer
 
 
-class RouteDetail(APIView):
-    """
-    Retrieve, update or delete a route.
-    """
-
-    def get_object(self, pk):
-        try:
-            return Route.objects.get(pk=pk)
-        except Route.DoesNotExist:
-            raise Http404
-
-    def get(self, request, pk, format=None):
-        route = self.get_object(pk)
-        serializer = RouteSerializer(route, context={'request': request})
-        return Response(serializer.data)
-
-    def put(self, request, pk, format=None):
-        route = self.get_object(pk)
-        serializer = RouteSerializer(route, data=request.data, context={'request': request})
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk, format=None):
-        route = self.get_object(pk)
-        route.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+class RouteDetail(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Route.objects.all()
+    serializer_class = RouteSerializer
 
 
 class RouteAddWayPoint(APIView):
     """
     Add way point to route
     """
-
     def get_object(self, pk):
         try:
             Route.objects.get(pk=pk)
@@ -101,15 +64,9 @@ class RoutePointsList(APIView):
         return Response(point_serializer.data)
 
 
-class RouteLength(APIView):
-    def get_object(self, pk):
-        try:
-            return Route.objects.get(pk=pk)
-        except Route.DoesNotExist:
-            raise Http404
-
+class RouteLength(generics.RetrieveAPIView):
     def get(self, request, pk):
-        route_len = route_length.get_route_length(request, pk)
+        route_len = route_length.get_route_length(pk)
         return Response({"km": route_len}, status=status.HTTP_200_OK)
 
 
