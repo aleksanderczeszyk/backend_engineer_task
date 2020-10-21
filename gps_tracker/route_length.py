@@ -26,7 +26,7 @@ def get_longest_route_for_given_day(date):
     routes = Route.objects.filter(date=date)
     for route in routes:
         route_ids_and_lengths.update(
-            {route["route_id"]: get_route_length(route.route_id)}
+            {route.route_id: get_route_length(route.route_id)}
         )
     longest_route_length = max(route_ids_and_lengths.values())
     longest_route_ids = [id for id in route_ids_and_lengths if route_ids_and_lengths[id] == longest_route_length]
