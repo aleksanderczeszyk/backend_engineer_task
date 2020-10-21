@@ -51,12 +51,9 @@ class RouteAddWayPoint(APIView):
         return Response(point_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class RoutePointsList(APIView):
-    def get_object(self, pk):
-        try:
-            return Route.objects.get(pk=pk)
-        except Route.DoesNotExist:
-            raise Http404
+class RoutePointsList(generics.RetrieveAPIView):
+    queryset = Route.objects.all()
+    serializer_class = RouteSerializer
 
     def get(self, request, pk):
         points = GeoPoint.objects.filter(route=pk)
@@ -65,6 +62,9 @@ class RoutePointsList(APIView):
 
 
 class RouteLength(generics.RetrieveAPIView):
+    queryset = Route.objects.all()
+    serializer_class = RouteSerializer
+
     def get(self, request, pk):
         route_len = route_length.get_route_length(pk)
         return Response({"km": route_len}, status=status.HTTP_200_OK)
