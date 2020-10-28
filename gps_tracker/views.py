@@ -26,7 +26,7 @@ class RouteAddWayPoint(APIView):
     """
     def get_object(self, pk):
         try:
-            Route.objects.get(pk=pk)
+            return Route.objects.get(pk=pk)
         except Route.DoesNotExist:
             raise Http404
 
@@ -35,9 +35,8 @@ class RouteAddWayPoint(APIView):
         req_data = request.data
         req_data['route'] = pk
         point_serializer = PointSerializer(data=req_data)
-        route_serializer = RouteSerializer(route, data=request.data, context={'request': request})
-        if point_serializer.is_valid() and route_serializer.is_valid():
-            if not date_checker.is_point_and_route_date_todays_date(route_serializer, point_serializer):
+        if point_serializer.is_valid():
+            if route.date != datetime.today().date():
                 return Response(
                     {"Fail": "The point and route creation date must be todays date"},
                     status=status.HTTP_400_BAD_REQUEST
@@ -74,15 +73,14 @@ class LongestRoutePerDay(APIView):
     def get_previous_days_routes(self, request, format=None):
         today = datetime.today().date()
         routes = Route.objects.exclude(date=today)
-        serializer = RouteSerializer(routes, many=True, context={'request': request})
-        return serializer.data
+        return routes
 
     def get(self, request, format=None):
         response_payload = []
-        routes_serialized_data = self.get_previous_days_routes(request)
-        dates = list(set([route["date"] for route in routes_serialized_data]))
+        routes = self.get_previous_days_routes(request)
+        dates = list(set([route.date for route in routes]))
         for date in dates:
             response_payload.append(
-                {"date": date, "route_ids": route_length.get_longest_route_for_given_day(date)}
+                {"date": date.strftime("%Y-%m-%d"), "route_ids": route_length.get_longest_route_for_given_day(date)}
             )
         return Response(response_payload, status=status.HTTP_200_OK)
