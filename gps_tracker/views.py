@@ -1,6 +1,6 @@
 from gps_tracker.models import GeoPoint, Route
 from gps_tracker.serializers import PointSerializer, RouteSerializer
-from gps_tracker import date_checker
+from gps_tracker.date_representation import date_representation as representation
 from gps_tracker import route_length
 from django.http import Http404
 from rest_framework.views import APIView
@@ -76,11 +76,7 @@ class LongestRoutePerDay(APIView):
         return routes
 
     def get(self, request, format=None):
-        response_payload = []
         routes = self.get_previous_days_routes(request)
         dates = list(set([route.date for route in routes]))
-        for date in dates:
-            response_payload.append(
-                {"date": date.strftime("%Y-%m-%d"), "route_ids": route_length.get_longest_route_for_given_day(date)}
-            )
+        response_payload = [representation(date) for date in dates]
         return Response(response_payload, status=status.HTTP_200_OK)

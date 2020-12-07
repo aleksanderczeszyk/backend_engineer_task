@@ -1,6 +1,6 @@
 from datetime import datetime
+from gps_tracker import route_length
 
 
-def is_point_and_route_date_todays_date(route_serializer, point_serializer):
-    today = datetime.today().date()
-    return route_serializer.validated_data['date'] == today and point_serializer.validated_data['date'] == today
+def date_representation(date):
+    return {"date": date.strftime("%Y-%m-%d"), "route_ids": route_length.get_longest_route_for_given_day(date)}
